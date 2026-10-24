@@ -1,0 +1,6 @@
+{
+  "name": "Love Caption API - Discover the Perfect Caption",
+  "description": "Fast and simple REST API for love, romantic, attitude, and sad captions with live scraping, JSON caching, and interactive developer studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
