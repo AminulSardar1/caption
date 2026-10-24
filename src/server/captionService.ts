@@ -1,5 +1,3 @@
-import axios from 'axios';
-import * as cheerio from 'cheerio';
 import { CATEGORIES_CONFIG, INITIAL_CAPTIONS, CaptionItem } from '../data/captionsData';
 
 interface CacheStore {
@@ -200,33 +198,52 @@ class CaptionService {
 
       for (const url of targetUrls) {
         try {
-          const resp = await axios.get(url, {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+          const resp = await fetch(url, {
             headers: {
               'User-Agent': userAgents[Math.floor(Math.random() * userAgents.length)],
               'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             },
-            timeout: 3500, // Quick timeout to prevent stalling
+            signal: controller.signal,
           });
+          clearTimeout(timeoutId);
 
-          if (resp.data) {
-            const $ = cheerio.load(resp.data);
+          if (resp.ok) {
+            const html = await resp.text();
             const found: string[] = [];
 
-            // Select common caption markup: blockquote, ol li, ul li, p.caption, .entry-content p
-            $('blockquote, .entry-content p, .caption-box, .quote-box, ol li, ul li').each((_, el) => {
-              const text = $(el).text().trim();
+            // Extract blockquotes
+            const bqMatches = html.matchAll(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi);
+            for (const m of bqMatches) {
+              const text = m[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+              if (text.length > 15 && text.length < 240 && !text.includes('cookie') && !text.includes('privacy')) {
+                found.push(text.replace(/^["'“”]+|["'“”]+$/g, '').trim());
+              }
+            }
+
+            // Extract list items
+            const liMatches = html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi);
+            for (const m of liMatches) {
+              const text = m[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+              if (text.length > 20 && text.length < 240 && !text.includes('http') && !text.includes('privacy')) {
+                found.push(text.replace(/^["'“”]+|["'“”]+$/g, '').trim());
+              }
+            }
+
+            // Extract paragraphs with quotes
+            const pMatches = html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+            for (const m of pMatches) {
+              const text = m[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
               if (
-                text.length > 15 &&
+                text.length > 25 &&
                 text.length < 240 &&
-                !text.includes('cookie') &&
-                !text.includes('privacy') &&
-                !text.includes('subscribe') &&
-                !text.includes('written by') &&
-                !text.includes('comment')
+                (text.startsWith('"') || text.startsWith('“') || text.includes('—') || text.includes('❤️'))
               ) {
                 found.push(text.replace(/^["'“”]+|["'“”]+$/g, '').trim());
               }
-            });
+            }
 
             if (found.length >= 3) {
               scrapedTexts = found;
