@@ -258,20 +258,21 @@ Your API and web studio are now live at `https://your-project.vercel.app`! 🎉
 
 ### Understanding vercel.json & Serverless Architecture
 
-The included `vercel.json` file configures serverless routing:
+The project uses Vercel's native file-based serverless functions located in the `/api` directory:
+- `/api/category.ts` ➔ Serves `/api/category` (and `/api/category?name=love`)
+- `/api/random.ts` ➔ Serves `/api/random` (and `/api/random?name=love`)
+- `/api/stats.ts` ➔ Serves `/api/stats`
+- `/api/health.ts` ➔ Serves `/api/health`
+- `/api/refresh.ts` ➔ Serves cache invalidation
+
+The `vercel.json` file handles SPA routing without interfering with `/api/*`:
 
 ```json
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],
@@ -287,9 +288,9 @@ The included `vercel.json` file configures serverless routing:
 }
 ```
 
-- Any request to `/api/*` is routed to the serverless function `/api/index.ts`.
-- All other web traffic serves the React SPA from `/dist/index.html`.
-- CORS headers are pre-configured so any client or bot can query the API without CORS blockers.
+- Any request starting with `/api/` goes directly to its dedicated serverless function in `/api/*.ts`.
+- Non-API requests serve the frontend React SPA from `/index.html`.
+- Global CORS headers prevent any client, bot, or mobile app from encountering CORS blockers.
 
 ---
 
